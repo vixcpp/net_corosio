@@ -1,0 +1,24 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# ------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------
+
+# In standalone mode, net_corosio depends on Boost::corosio
+# which is expected to be provided via FetchContent at build time.
+# If a downstream project installs net_corosio separately,
+# it must ensure Corosio is available in the toolchain.
+
+# We do not force find_package(Boost) here because Corosio
+# exports Boost::corosio target directly.
+
+# ------------------------------------------------------------
+# Targets
+# ------------------------------------------------------------
+
+include("${CMAKE_CURRENT_LIST_DIR}/net_corosioTargets.cmake")
+
+# Provide version variable
+set(net_corosio_VERSION "@PROJECT_VERSION@")

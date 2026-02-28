@@ -7,8 +7,6 @@ It exists to evaluate, benchmark, and understand modern coroutine-driven network
 This repository is not a foundation of Vix.
 It is a research layer.
 
----
-
 ## The Problem
 
 Modern C++ networking is powerful, but fragmented.
@@ -30,8 +28,6 @@ What you do not have:
 
 When building a runtime like Vix, this fragmentation becomes a strategic risk.
 
----
-
 ## Why net_corosio Exists
 
 Before adopting any networking backend into a runtime, it must be evaluated.
@@ -51,8 +47,6 @@ net_corosio exists to answer critical questions:
 
 This repository allows Vix to measure before committing.
 
----
-
 ## This Is Not a Dependency
 
 net_corosio is not the core of Vix.
@@ -68,8 +62,6 @@ Its role is:
 - Performance and failure analysis
 
 A runtime cannot afford blind coupling.
-
----
 
 ## Why This Matters
 
@@ -88,8 +80,6 @@ Once exposed publicly, those decisions become difficult to reverse.
 
 net_corosio protects Vix from premature architectural lock-in.
 
----
-
 ## Philosophy
 
 - Measure before adopting
@@ -97,8 +87,6 @@ net_corosio protects Vix from premature architectural lock-in.
 - Control before convenience
 - Stability over novelty
 - Architecture before benchmarks
-
----
 
 ## Status
 
@@ -110,8 +98,6 @@ It may be replaced.
 
 Its purpose is clarity.
 
----
-
 ## Part of the Vix Ecosystem
 
 Vix is building a modern C++ runtime with:
@@ -122,8 +108,6 @@ Vix is building a modern C++ runtime with:
 - Long-term maintainability
 
 net_corosio contributes to that mission by ensuring networking decisions are deliberate, not accidental.
-
----
 
 ## License
 

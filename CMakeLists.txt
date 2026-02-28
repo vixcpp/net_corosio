@@ -24,8 +24,6 @@ include(NetCorosioSanitizers)
 
 # ----------------------------------------------------
 # Corosio policy
-# - Umbrella: must provide vix::thirdparty_corosio
-# - Standalone: fetch Corosio from upstream
 # ----------------------------------------------------
 function(vix_net_corosio_link_corosio onto link_scope)
   # Umbrella mode
@@ -43,7 +41,6 @@ function(vix_net_corosio_link_corosio onto link_scope)
 
   option(NET_COROSIO_FETCH_DEPS "Fetch Corosio dependencies (recommended)" ON)
 
-  # Corosio uses Boost libs (corosio, capy, url, etc). Upstream build handles this.
   FetchContent_Declare(
     corosio
     GIT_REPOSITORY https://github.com/cppalliance/corosio.git
@@ -58,17 +55,38 @@ function(vix_net_corosio_link_corosio onto link_scope)
     add_subdirectory(${corosio_SOURCE_DIR} ${corosio_BINARY_DIR} EXCLUDE_FROM_ALL)
   endif()
 
-  if (TARGET Boost::corosio)
-    target_link_libraries(${onto} ${link_scope} Boost::corosio)
-    target_compile_definitions(${onto} ${link_scope} VIX_NET_COROSIO_WITH_COROSIO=1)
-    message(STATUS "[net_corosio] Corosio: using FetchContent (Boost::corosio)")
-    return()
+  if (NOT TARGET Boost::corosio)
+    message(FATAL_ERROR
+      "[net_corosio] Corosio target not found after FetchContent.\n"
+      "Expected target: Boost::corosio\n"
+    )
   endif()
 
-  message(FATAL_ERROR
-    "[net_corosio] Corosio target not found after FetchContent.\n"
-    "Expected target: Boost::corosio\n"
-  )
+  target_link_libraries(${onto} ${link_scope} Boost::corosio)
+  target_compile_definitions(${onto} ${link_scope} VIX_NET_COROSIO_WITH_COROSIO=1)
+
+  # Link the correct Corosio TLS backend (this fixes undefined wolfssl_stream symbols)
+  if (NET_COROSIO_TLS_WOLFSSL)
+    if (TARGET Boost::corosio_wolfssl)
+      target_link_libraries(${onto} ${link_scope} Boost::corosio_wolfssl)
+      message(STATUS "[net_corosio] Corosio TLS backend: Boost::corosio_wolfssl")
+    else()
+      message(FATAL_ERROR
+        "[net_corosio] Corosio wolfSSL backend not built.\n"
+        "Expected target: Boost::corosio_wolfssl\n"
+        "Fix: ensure find_package(WolfSSL) succeeds for Corosio (provide FindWolfSSL.cmake in this module).\n"
+      )
+    endif()
+  else()
+    if (TARGET Boost::corosio_openssl)
+      target_link_libraries(${onto} ${link_scope} Boost::corosio_openssl)
+      message(STATUS "[net_corosio] Corosio TLS backend: Boost::corosio_openssl")
+    else()
+      message(STATUS "[net_corosio] Corosio OpenSSL backend target not found (Boost::corosio_openssl). Continuing with Boost::corosio only.")
+    endif()
+  endif()
+
+  message(STATUS "[net_corosio] Corosio: using FetchContent (Boost::corosio)")
 endfunction()
 
 # ----------------------------------------------------
@@ -105,6 +123,19 @@ target_sources(vix_net_corosio
       FILES ${VIX_NET_COROSIO_HEADERS}
 )
 
+# ----------------------------------------------------
+# TLS backend selection (exclusive)
+# ----------------------------------------------------
+if (NET_COROSIO_TLS_WOLFSSL)
+  find_package(WolfSSL REQUIRED)
+  target_link_libraries(vix_net_corosio PUBLIC WolfSSL::WolfSSL)
+  target_compile_definitions(vix_net_corosio PUBLIC VIX_NET_COROSIO_TLS_WOLFSSL=1)
+else()
+  find_package(OpenSSL REQUIRED)
+  target_link_libraries(vix_net_corosio PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+  target_compile_definitions(vix_net_corosio PUBLIC VIX_NET_COROSIO_TLS_WOLFSSL=0)
+endif()
+
 # Corosio link (policy)
 vix_net_corosio_link_corosio(vix_net_corosio PUBLIC)
 
@@ -133,27 +164,32 @@ if (NET_COROSIO_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
+# Bench
+if (NET_COROSIO_BUILD_BENCH)
+  add_subdirectory(bench EXCLUDE_FROM_ALL)
+endif()
+
 # ----------------------------------------------------
 # Install + export
-# - Standalone: installs net_corosioTargets + net_corosioConfig.cmake
-# - Umbrella: contributes target to VixTargets only (umbrella owns packaging)
 # ----------------------------------------------------
 set(_NET_COROSIO_EXPORT_SET "net_corosioTargets")
 if (DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD)
   set(_NET_COROSIO_EXPORT_SET "VixTargets")
 endif()
 
-install(
-  TARGETS vix_net_corosio
-  EXPORT ${_NET_COROSIO_EXPORT_SET}
-  FILE_SET HEADERS
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+if (NET_COROSIO_INSTALL OR (DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD))
+  install(
+    TARGETS vix_net_corosio
+    EXPORT ${_NET_COROSIO_EXPORT_SET}
+    FILE_SET HEADERS
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+endif()
 
 # Standalone package exports (only when not built via umbrella)
-if (NOT (DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD))
+if (NET_COROSIO_INSTALL AND NOT (DEFINED VIX_UMBRELLA_BUILD AND VIX_UMBRELLA_BUILD))
   install(
     EXPORT net_corosioTargets
     NAMESPACE vix::

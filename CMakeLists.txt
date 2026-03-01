@@ -166,7 +166,7 @@ endif()
 
 # Bench
 if (NET_COROSIO_BUILD_BENCH)
-  add_subdirectory(bench EXCLUDE_FROM_ALL)
+  add_subdirectory(bench)
 endif()
 
 # ----------------------------------------------------
